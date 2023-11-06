@@ -11,33 +11,21 @@ const VideoUpload = () => {
     setFile(e.target.files?.[0]);
   }
 
+  const handleWorkerMessage = async (e: any) => {
+    try {
+      const reponse = await axios.post(`http://localhost:8080/upload?fileName=${e.data.fileName}`, e.data.chunk);
+      console.log(reponse)
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   useEffect(() => {
     if (!file) return;
-
-    const fileReader = new FileReader();
-    fileReader.readAsArrayBuffer(file);
-
-    fileReader.onload = async (event: ProgressEvent<FileReader>) => {
-      const content = event.target!.result as ArrayBuffer;
-      const CHUNK_SIZE = 100000;
-      const totalChunks = content.byteLength / CHUNK_SIZE;
-      const fileName =
-        Math.random().toString(36).slice(-6) + file.name;
-
-      for (let chunk = 0; chunk < totalChunks + 1; chunk++) {
-        const CHUNK = content.slice(
-          chunk * CHUNK_SIZE,
-          (chunk + 1) * CHUNK_SIZE
-        );
-        console.log(CHUNK)
-        try {
-          const reponse = await axios.post(`http://localhost:8080/upload?fileName=${fileName}`, CHUNK);
-          console.log(reponse)
-        } catch (error) {
-          console.error(error);
-        }
-      }
-    };
+    let worker;
+    worker ??= new Worker("worker.js");
+    worker.onmessage = handleWorkerMessage;
+    worker.postMessage(file);
   }, [file])
 
   return (
