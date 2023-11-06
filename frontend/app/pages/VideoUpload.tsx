@@ -1,38 +1,43 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import axios from "axios";
 
 const VideoUpload = () => {
-  const [selectedFileName, setSelectedFileName] = useState<string | undefined>('');
+  const [selectedFileName, setSelectedFileName] = useState<string | undefined>("");
   const [file, setFile] = useState<File>();
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0]);
   }
 
-  const handleWorkerMessage = (e: any) => {
-    const res = e.data;
-    switch (res.type) {
-      case "result": {
-        const [cnt0, cnt1] = res.result;
-        console.log(`file has ${cnt0} zeros and ${cnt1} ones`);
-        break;
-      }
-      case "error": {
-        console.error("worker error", res.error);
-        break;
-      }
-    }
-  }
-
   useEffect(() => {
-    let worker;
     if (!file) return;
-    setSelectedFileName(file.name);
-    // convertFileWithArrayBuffer(file);
-    worker ??= new Worker("/worker.js");
-    worker.onmessage = handleWorkerMessage;
-    worker.postMessage(file);
+
+    const fileReader = new FileReader();
+    fileReader.readAsArrayBuffer(file);
+
+    fileReader.onload = async (event: ProgressEvent<FileReader>) => {
+      const content = event.target!.result as ArrayBuffer;
+      const CHUNK_SIZE = 100000;
+      const totalChunks = content.byteLength / CHUNK_SIZE;
+      const fileName =
+        Math.random().toString(36).slice(-6) + file.name;
+
+      for (let chunk = 0; chunk < totalChunks + 1; chunk++) {
+        const CHUNK = content.slice(
+          chunk * CHUNK_SIZE,
+          (chunk + 1) * CHUNK_SIZE
+        );
+        console.log(CHUNK)
+        try {
+          const reponse = await axios.post(`http://localhost:8080/upload?fileName=${fileName}`, CHUNK);
+          console.log(reponse)
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    };
   }, [file])
 
   return (
