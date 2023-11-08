@@ -9,8 +9,18 @@ import (
 	"os"
 )
 
+var uploadPath = os.TempDir()
+
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+}
+
+func WriteFileFunc(file *os.File, body []byte, done chan bool) {
+	_, err := file.Write(body)
+	if err != nil {
+		log.Println(err)
+	}
+	done <- true
 }
 
 func handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -22,32 +32,37 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fileName := query.Get("fileName")
-
-		file, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		fileIndex := query.Get("fileIndex")
+		uploadFolder := "./uploads"
+		filePath := uploadFolder + "/" + fileName
+		file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		defer file.Close()
 
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Println(err)
+			file.Close()
 			return
 		}
 
-		_, err = file.Write(body)
-		if err != nil {
-			log.Println(err)
-			return
-		}
+		done := make(chan bool)
+		go WriteFileFunc(file, body, done)
 
-		fmt.Fprint(w, "successfully file uploaded!")
+		<-done
+		file.Close()
+		fmt.Fprint(w, fileIndex)
 	}
 }
 
 func main() {
-	http.HandleFunc("/upload", handleUpload)
+	uploadFolder := "./uploads"
 
+	// Serve the "uploads" folder as a public directory
+	fs := http.FileServer(http.Dir(uploadFolder))
+	http.Handle("/uploads/", http.StripPrefix("/uploads/", fs))
+	http.HandleFunc("/upload", handleUpload)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
