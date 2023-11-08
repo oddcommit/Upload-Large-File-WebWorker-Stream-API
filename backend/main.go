@@ -59,8 +59,6 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	uploadFolder := "./uploads"
-
-	// Serve the "uploads" folder as a public directory
 	fs := http.FileServer(http.Dir(uploadFolder))
 	http.Handle("/uploads/", http.StripPrefix("/uploads/", fs))
 	http.HandleFunc("/upload", handleUpload)

@@ -28,8 +28,7 @@ const VideoUpload = () => {
       const content = event.target?.result as ArrayBuffer;
       const CHUNK_SIZE = 1000000;
       const totalChunks = content.byteLength / CHUNK_SIZE;
-      const fileName =
-        Math.random().toString(36).slice(-6) + file.name;
+      const fileName = Math.random().toString(36).slice(-6) + file.name;
       for (let chunk = 0; chunk < totalChunks + 1; chunk++) {
         const CHUNK = content.slice(
           chunk * CHUNK_SIZE,
@@ -41,9 +40,10 @@ const VideoUpload = () => {
         })
         setProgress((res?.data) * 100 / Math.ceil(totalChunks));
       }
-      let tmp: UploadedFilesType[] = uploadedFiles;
-      tmp?.push({ url: `http://localhost:8080/uploads/${fileName}`, name: file.name })
-      setUploadFiles(tmp);
+      setUploadFiles((prevUploadedFiles) => [
+        ...prevUploadedFiles,
+        { url: `http://localhost:8080/uploads/${fileName}`, name: file.name },
+      ]);
     };
   }, [file])
 
